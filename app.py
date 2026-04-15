@@ -263,18 +263,24 @@ def _fetch_nse() -> pd.DataFrame:
 
 
 @st.cache_data(ttl=86400, show_spinner=False)
-def load_stock_universe() -> pd.DataFrame:
-    """Load full NSE equity universe. Cached 24 hrs."""
+@st.cache_data(ttl=86400)
+def load_stock_universe():
     try:
-        df = _fetch_nse()
+        df = pd.read_csv("nse_stocks.csv")
+
+        # Clean columns
+        df["Symbol"] = df["Symbol"].astype(str).str.strip().str.upper()
+        df["Name"] = df["Name"].astype(str).str.strip()
+
+        df["Exchange"] = "NSE"
+        df["YF_Ticker"] = df["Symbol"] + ".NS"
+        df["Display"] = df["Symbol"] + " — " + df["Name"]
+
+        return df.sort_values("Symbol").reset_index(drop=True)
+
     except Exception as e:
-        st.error(f"Could not fetch NSE stock list: {e}\n\nCheck your internet connection.")
+        st.error(f"Error loading stock list: {e}")
         return pd.DataFrame(columns=["Symbol", "Name", "Exchange", "YF_Ticker", "Display"])
-
-    df["Display"] = df["Symbol"] + " — " + df["Name"]
-    return df.sort_values("Symbol").reset_index(drop=True)
-
-
 @st.cache_data(ttl=300)
 def get_current_price(symbol, exchange="NSE"):
     import yfinance as yf
